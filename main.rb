@@ -103,7 +103,7 @@ post '/game/player/hit' do
   session[:player_cards] << session[:deck].pop
 
   player_total = calculate_total(session[:player_cards])
-  if player_total = 21
+  if player_total == 21
     @success = "Congrats! You hit blackjack, you win!"
     @show_hit_or_stay_buttons = false
   elsif calculate_total(session[:player_cards]) > 21
@@ -118,7 +118,44 @@ end
 post '/game/player/stay' do 
   @success = "Good thinking, You stay."
   @show_hit_or_stay_buttons = false
+  redirect '/game/dealer'
+end
+
+get '/game/dealer' do 
+  @show_hit_or_stay_buttons = false
+  dealer_total = calculate_total(session[:dealer_cards])
+
+  if dealer_total == 21
+    @error = "Sorry, the dealer hit blackjack"
+  elsif dealer_total > 21
+    @success = "Congrats, dealer busted. You win."
+  elsif dealer_total >= 17
+    redirect '/game/compare'
+  else
+    @show_dealer_hit_button = true
+  end
+
   erb :game
 end
 
+post '/game/dealer/hit' do
+  session[:dealer_cards] << session[:deck].pop
+  redirect '/game/dealer'
+end
 
+get '/game/compare' do
+  @show_hit_or_stay_buttons = false
+  player_total = calculate_total(session[:player_cards])
+  dealer_total = calculate_total(session[:dealer_cards])
+
+  if player_total < dealer_total
+    @error = "You LOSE!!!!"
+  elsif player_total > dealer_total
+    @success = "You WIN!!!!"
+  else
+    @success = "it's a tie..."
+  end
+  erb :game
+end
+
+    
