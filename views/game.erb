@@ -2,12 +2,22 @@
 <br>
 <h4>Hi There <%= session[:player_name] %> !</h4>
 
-
+<% if @play_again %>
+<p>
+  <strong>Play Again?</strong>
+  <a href="/game" class="btn btn-primary"> Yes</a>
+  <a href="/game_over" class="btn"> No Thanks</a>
+</p>
+<% end %>
 
 <div class="well">
 <h3>Dealers cards:</h3>
-    <% session[:dealer_cards].each do |card| %>
-    <%= card_image(card) %>
+    <% session[:dealer_cards].each_with_index do |card, i| %>
+      <% if session[:turn] != "dealer" && i == 0 %>
+        <img src="/images/cards/cover.jpg">
+      <% else %>
+        <%= card_image(card) %>
+      <% end %>
     <% end %>
 
     <% if @show_dealer_hit_button %>

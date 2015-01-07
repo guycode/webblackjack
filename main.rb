@@ -1,9 +1,10 @@
 require 'rubygems'
 require 'sinatra'
 
-use Rack::Session::Cookie, :key => 'rack.session',
-                           :path => '/',
-                           :secret => 'AvaCash'
+set :session, true
+
+BLACKJACK_AMOUNT = 21
+DEALER_MIN_HIT = 17
 
 helpers do
   def calculate_total(cards)
@@ -19,7 +20,7 @@ helpers do
     end
 
     arr.select{|element| element == "A"}.count.times do 
-      break if total <= 21
+      break if total <= BLACKJACK_AMOUNT
       total -= 10
     end
 
@@ -46,6 +47,24 @@ helpers do
 
 
     "<img src='/images/cards/#{suit}_#{value}.jpg' class='card_image'>"
+  end
+
+  def winner!(msg)
+    @play_again = true
+    @show_hit_or_stay_buttons = false
+    @success = "<strong>#{session[:player_name]} wins!</stong> #{msg}"
+  end 
+
+  def loser!(msg)
+    @play_again = true
+    @show_hit_or_stay_buttons = false
+    @error = "<strong>#{session[:player_name]} loses. </strong> #{msg}"
+  end
+
+  def tie!(msg)
+    @play_again = true
+    @show_hit_or_stay_buttons = false
+    @success = "<strong>Its a tie.. </strong> #{msg}"
   end
 end
 
@@ -84,6 +103,8 @@ end
 
 
 get '/game' do 
+  session[:turn] = session[:player_name]
+
   suits = ['H','D','S','C']
   values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
   session[:deck] = suits.product(values).shuffle!
@@ -103,12 +124,10 @@ post '/game/player/hit' do
   session[:player_cards] << session[:deck].pop
 
   player_total = calculate_total(session[:player_cards])
-  if player_total == 21
-    @success = "Congrats! You hit blackjack, you win!"
-    @show_hit_or_stay_buttons = false
-  elsif calculate_total(session[:player_cards]) > 21
-    @error = "Sorry you busted sucker"
-    @show_hit_or_stay_buttons = false
+  if player_total == BLACKJACK_AMOUNT
+    winner!("#{session[:player_name]} hit blackjack")
+  elsif player_total > BLACKJACK_AMOUNT
+    loser!("It looks like #{session[:player_name]} busted at #{player_total}.")
   end
 
   erb :game
@@ -122,14 +141,15 @@ post '/game/player/stay' do
 end
 
 get '/game/dealer' do 
+  session[:turn] = "dealer"
   @show_hit_or_stay_buttons = false
   dealer_total = calculate_total(session[:dealer_cards])
 
-  if dealer_total == 21
-    @error = "Sorry, the dealer hit blackjack"
-  elsif dealer_total > 21
-    @success = "Congrats, dealer busted. You win."
-  elsif dealer_total >= 17
+  if dealer_total ==  BLACKJACK_AMOUNT
+    loser!("Dealer hit blackjack")
+  elsif dealer_total > BLACKJACK_AMOUNT
+    winner!("Dealer buster at #{dealer_total}")
+  elsif dealer_total >= DEALER_MIN_HIT
     redirect '/game/compare'
   else
     @show_dealer_hit_button = true
@@ -149,13 +169,17 @@ get '/game/compare' do
   dealer_total = calculate_total(session[:dealer_cards])
 
   if player_total < dealer_total
-    @error = "You LOSE!!!!"
+    loser!("#{session[:player_name]} stayed at #{player_total}, and the dealer stayed at #{dealer_total}.")
   elsif player_total > dealer_total
-    @success = "You WIN!!!!"
+    winner!("#{session[:player_name]} stayed at #{player_total}, and the dealer stayed at #{dealer_total}.")
   else
-    @success = "it's a tie..."
+    tie!("Both #{session[:player_name]} and the dealer stayed at #{dealer_total}.")
   end
   erb :game
+end
+
+get '/game_over' do
+  erb:game_over
 end
 
     
